@@ -10,5 +10,12 @@ async fn main() -> Result<()> {
 
     println!("I got some results yo: {:?}", result);
 
+    let mut connection_another = client::connect("127.0.0.1:6379").await?;
+    let result = connection_another.get("hello").await?;
+    println!(
+        "I also got your result from a shared state yo: {:?}",
+        result
+    );
+
     Ok(())
 }
