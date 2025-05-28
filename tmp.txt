@@ -1,0 +1,9 @@
+"nodir/": No such file or directory (os error 2)
+"nodir/": No such file or directory (os error 2)
+"nodir/": No such file or directory (os error 2)
+.rw-r--r--  28k jackcordery staff 27 May 15:04 Cargo.lock
+.rw-r--r--  152 jackcordery staff 27 May 15:06 Cargo.toml
+drwxr-xr-x    - jackcordery staff 27 May 16:50 examples
+drwxr-xr-x    - jackcordery staff 27 May 19:27 src
+drwxr-xr-x@   - jackcordery staff 27 May 15:07 target
+.rw-r--r--  147 jackcordery staff 28 May 08:10 tmp.txt
