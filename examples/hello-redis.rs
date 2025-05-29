@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let mut connection_another = client::connect("127.0.0.1:6379").await?;
     let result = connection_another.get("hello").await?;
     println!(
-        "I also got your result from a shared state yo: {:?}",
+        "I also got your result from a shared and sharded state yo: {:?}",
         result
     );
 
