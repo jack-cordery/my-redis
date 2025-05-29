@@ -42,8 +42,8 @@ async fn sharded_process(socket: TcpStream, db: ShardedDb) -> Result<()> {
             Command::Set(cmd) => {
                 let mut state = DefaultHasher::new();
                 cmd.key().hash(&mut state);
-                let shard_index: usize = (state.finish() % (db.len() as u64)) as usize;
-                let shard = db[shard_index].lock();
+                let shard_index: u64 = state.finish() & (db.len() - 1) as u64;
+                let shard = db[shard_index as usize].lock();
                 shard
                     .unwrap()
                     .insert(cmd.key().to_string(), cmd.value().to_vec());
@@ -52,8 +52,8 @@ async fn sharded_process(socket: TcpStream, db: ShardedDb) -> Result<()> {
             Command::Get(cmd) => {
                 let mut state = DefaultHasher::new();
                 cmd.key().hash(&mut state);
-                let shard_index: usize = (state.finish() % (db.len() as u64)) as usize;
-                let shard = db[shard_index].lock();
+                let shard_index: u64 = state.finish() & (db.len() - 1) as u64;
+                let shard = db[shard_index as usize].lock();
                 if let Some(value) = shard.unwrap().get(cmd.key()) {
                     Frame::Bulk(value.clone().into())
                 } else {
