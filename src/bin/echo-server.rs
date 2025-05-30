@@ -23,7 +23,7 @@ async fn main() -> io::Result<()> {
 // what we will need to do is store the read in some kind of buffer that the writer can then
 // access
 async fn process(_socket: &mut TcpStream) -> io::Result<()> {
-    let mut buf = [0; 1024];
+    let mut buf = vec![0; 1024];
     let n;
     match _socket.read(&mut buf).await {
         Ok(0) => {
