@@ -1,17 +1,22 @@
-use tokio::fs::File;
-
-use tokio::io::{self, AsyncWriteExt};
+use tokio::io;
+use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let content = b"bello\n".repeat(100_000_000);
-    let reader: &[u8] = &content;
+    let listener = TcpListener::bind("127.0.0.1:8081").await?;
 
-    let mut file = File::create("foo.txt").await?;
+    loop {
+        let (mut socket, _) = listener.accept().await?;
 
-    file.write_all(reader).await?;
+        tokio::spawn(async move {
+            process(&mut socket).await;
+        });
+    }
+}
 
-    println!("write completed");
-
-    Ok(())
+async fn process(socket: &mut TcpStream) {
+    let (mut read_socket, mut write_socket) = socket.split();
+    if io::copy(&mut read_socket, &mut write_socket).await.is_err() {
+        eprintln!("failed to copy");
+    };
 }
