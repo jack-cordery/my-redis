@@ -1,9 +1,10 @@
 use futures::task::{self, ArcWake};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, mpsc};
-use std::task::{Context, Poll, Waker};
+use std::task::{Context, Poll};
 use std::thread;
 use std::time::{Duration, Instant};
+use tokio::sync::Notify;
 
 struct MiniTokio {
     scheduled: mpsc::Receiver<Arc<Task>>,
@@ -87,55 +88,30 @@ impl MiniTokio {
         }
     }
 }
-struct Delay {
-    when: Instant,
-    waker: Option<Arc<Mutex<Waker>>>,
-}
 
-impl Future for Delay {
-    type Output = &'static str;
+async fn delay(dur: Duration) {
+    let when = Instant::now() + dur;
+    let notify = Arc::new(Notify::new());
+    let notify_clone = notify.clone();
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<&'static str> {
-        if Instant::now() >= self.when {
-            println!("Hello World!");
-            return Poll::Ready("done");
+    thread::spawn(move || {
+        let now = Instant::now();
+        if now < when {
+            thread::sleep(when - now);
         }
 
-        // if its the first time we would get None, otherwise we will get Some
-        // and we need to check its the same waker as the waker could get moved
-        // into a different thread between polls and we need to update it
-        if let Some(waker) = &self.waker {
-            let mut waker = waker.lock().unwrap();
-            if !waker.will_wake(cx.waker()) {
-                *waker = cx.waker().clone();
-            }
-        } else {
-            let when = self.when;
-            let waker = Arc::new(Mutex::new(cx.waker().clone()));
+        println!("hello world");
 
-            self.waker = Some(waker.clone());
-
-            thread::spawn(move || {
-                let now = Instant::now();
-                if now < when {
-                    thread::sleep(when - now);
-                }
-                let waker = waker.lock().unwrap();
-                waker.wake_by_ref();
-            });
-        }
-        Poll::Pending
-    }
+        notify_clone.notify_one();
+    });
+    notify.notified().await;
 }
 
 fn main() {
     let mut mini_tokio = MiniTokio::new();
 
     mini_tokio.spawn(async {
-        let when = Instant::now() + Duration::from_secs(5);
-        let future = Delay { when, waker: None };
-        let out = future.await;
-        assert_eq!(out, "done");
+        delay(Duration::from_secs(5)).await;
     });
 
     mini_tokio.run();
