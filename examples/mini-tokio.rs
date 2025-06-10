@@ -98,7 +98,7 @@ impl Future for Delay {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<&'static str> {
         if Instant::now() >= self.when {
             println!("Hello World!");
-            Poll::Ready("done");
+            return Poll::Ready("done");
         }
 
         // if its the first time we would get None, otherwise we will get Some
@@ -133,7 +133,7 @@ fn main() {
 
     mini_tokio.spawn(async {
         let when = Instant::now() + Duration::from_secs(5);
-        let future = Delay { when };
+        let future = Delay { when, waker: None };
         let out = future.await;
         assert_eq!(out, "done");
     });
