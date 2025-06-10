@@ -1,7 +1,7 @@
 use futures::task::{self, ArcWake};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, mpsc};
-use std::task::{Context, Poll};
+use std::task::{Context, Poll, Waker};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -89,28 +89,42 @@ impl MiniTokio {
 }
 struct Delay {
     when: Instant,
+    waker: Option<Arc<Mutex<Waker>>>,
 }
 
 impl Future for Delay {
     type Output = &'static str;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<&'static str> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<&'static str> {
         if Instant::now() >= self.when {
             println!("Hello World!");
-            Poll::Ready("done")
+            Poll::Ready("done");
+        }
+
+        // if its the first time we would get None, otherwise we will get Some
+        // and we need to check its the same waker as the waker could get moved
+        // into a different thread between polls and we need to update it
+        if let Some(waker) = &self.waker {
+            let mut waker = waker.lock().unwrap();
+            if !waker.will_wake(cx.waker()) {
+                *waker = cx.waker().clone();
+            }
         } else {
             let when = self.when;
-            let waker = cx.waker().clone();
+            let waker = Arc::new(Mutex::new(cx.waker().clone()));
+
+            self.waker = Some(waker.clone());
 
             thread::spawn(move || {
                 let now = Instant::now();
                 if now < when {
                     thread::sleep(when - now);
                 }
-                waker.wake();
+                let waker = waker.lock().unwrap();
+                waker.wake_by_ref();
             });
-            Poll::Pending
         }
+        Poll::Pending
     }
 }
 
